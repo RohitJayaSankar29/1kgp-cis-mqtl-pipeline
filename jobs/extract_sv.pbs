@@ -1,0 +1,40 @@
+#!/bin/bash
+#PBS -N sv_extract
+#PBS -P cy94
+#PBS -q express
+#PBS -l ncpus=2
+#PBS -l mem=16GB
+#PBS -l walltime=01:00:00
+#PBS -l storage=scratch/cy94+gdata/xl04
+#PBS -l wd
+#PBS -j oe
+#PBS -r y
+#PBS -o /scratch/cy94/rs4477/logs/sv_extract.log
+set -uo pipefail
+module load bcftools/1.21
+PANEL=/g/data/xl04/rs4477/1kgp-cis-mqtl/genotypes/chr22/1kGP_high_coverage_Illumina.chr22.filtered.SNV_INDEL_SV_phased_panel.vcf.gz
+BASE=/scratch/cy94/rs4477/1kgp-cis-mqtl
+FAM=$BASE/genotypes/chr22_100samples/chr22.100samples.fam
+OUTDIR=$BASE/sv; mkdir -p "$OUTDIR"
+OUT=$OUTDIR/chr22
+awk '{id=$2; na=id; sub(/^GM/,"NA",na); print na}'       "$FAM" > "$OUTDIR/keep_na.txt"
+awk '{id=$2; na=id; sub(/^GM/,"NA",na); print na"\t"id}' "$FAM" > "$OUTDIR/rename_na2gm.txt"
+echo "samples: $(wc -l < "$OUTDIR/keep_na.txt")"; head -2 "$OUTDIR/keep_na.txt"
+
+bcftools view -r chr22 -S "$OUTDIR/keep_na.txt" --force-samples "$PANEL" \
+  | bcftools view -i 'ALT[0]~"<"' -Oz -o "$OUT.sv.vcf.gz"
+N=$(bcftools index -n "$OUT.sv.vcf.gz" 2>/dev/null || echo 0)
+echo "SV records after filter: $N"
+if [ "$N" -eq 0 ]; then echo "ERROR: 0 SV records -- filter/panel needs inspection"; exit 1; fi
+bcftools index -t "$OUT.sv.vcf.gz"
+
+bcftools reheader -s "$OUTDIR/rename_na2gm.txt" "$OUT.sv.vcf.gz" -o "$OUT.sv.gm.vcf.gz"
+bcftools index -t "$OUT.sv.gm.vcf.gz"
+{
+  printf "sv_id\tchrom\tpos\tend\tsvtype\tsvlen"
+  for s in $(bcftools query -l "$OUT.sv.gm.vcf.gz"); do printf "\t%s" "$s"; done
+  printf "\n"
+  bcftools query -f '%ID\t%CHROM\t%POS\t%INFO/END\t%INFO/SVTYPE\t%INFO/SVLEN[\t%GT]\n' "$OUT.sv.gm.vcf.gz"
+} > "$OUT.sv.gt.tsv"
+echo "SVs in matrix: $(( $(wc -l < "$OUT.sv.gt.tsv") - 1 ))"
+echo "DONE -> $OUT.sv.gt.tsv"

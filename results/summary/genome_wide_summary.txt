@@ -1,0 +1,5 @@
+Genome-wide cis-mQTL scan (452 unrelated 1000G-ONT samples)
+Total CpGs tested: 25912587
+Significant cis-mQTLs (FDR<0.05, BH): 1638801
+Permutations: 100 (discovery)
+cis-window: +/-1Mb

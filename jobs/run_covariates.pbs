@@ -1,0 +1,32 @@
+#!/bin/bash
+#PBS -N build_cov
+#PBS -P cy94
+#PBS -q express
+#PBS -l ncpus=2
+#PBS -l mem=16GB
+#PBS -l walltime=00:30:00
+#PBS -l storage=scratch/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -r y
+#PBS -o /scratch/cy94/rs4477/logs/build_cov.log
+set -uo pipefail
+PLINK2=/scratch/cy94/rs4477/micromamba/envs/plink/bin/plink2
+PY=/scratch/cy94/rs4477/micromamba/envs/mqtl_tensorqtl/bin/python3
+GENO=/scratch/cy94/rs4477/1kgp-cis-mqtl/genotypes/chr22_100samples/chr22.100samples
+MATRIX=/scratch/cy94/rs4477/1kgp-cis-mqtl/matrix/chr22_100samples/methylation_Mval.bed.gz
+OUT=/scratch/cy94/rs4477/1kgp-cis-mqtl/covariates/chr22_100samples
+mkdir -p "$OUT"
+
+"$PLINK2" --bfile "$GENO" --indep-pairwise 200 50 0.1 --out "$OUT/prune"
+"$PLINK2" --bfile "$GENO" --extract "$OUT/prune.prune.in" --pca 5 --out "$OUT/geno_pca"
+
+"$PY" /scratch/cy94/rs4477/build_covariates.py \
+  --matrix "$MATRIX" --geno-pca "$OUT/geno_pca.eigenvec" \
+  --out "$OUT/covariates.tsv" --n-meth-pc 10
+
+echo "=== covariates ==="
+echo "rows (covariates): $(( $(wc -l < "$OUT/covariates.tsv") - 1 ))"
+echo "cols: $(head -1 "$OUT/covariates.tsv" | awk '{print NF}')  (want 101 = id + 100 samples)"
+cut -f1 "$OUT/covariates.tsv" | tail -n +2 | tr '\n' ' '; echo
+echo "DONE"

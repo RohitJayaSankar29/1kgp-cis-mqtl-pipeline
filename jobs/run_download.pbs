@@ -1,0 +1,12 @@
+#!/bin/bash
+#PBS -N dl_methyl
+#PBS -P cy94
+#PBS -q copyq
+#PBS -l ncpus=1
+#PBS -l mem=8GB
+#PBS -l walltime=10:00:00
+#PBS -l storage=scratch/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/cy94/rs4477/logs/dl_methyl.log
+bash /scratch/cy94/rs4477/download_methylation.sh

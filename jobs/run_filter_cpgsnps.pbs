@@ -1,0 +1,27 @@
+#!/bin/bash
+#PBS -N filter_cpgsnps
+#PBS -P cy94
+#PBS -q normal
+#PBS -l ncpus=2
+#PBS -l mem=16GB
+#PBS -l walltime=00:30:00
+#PBS -l storage=scratch/cy94+gdata/xl04
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/cy94/rs4477/logs/filter_cpgsnps.log
+set -uo pipefail
+PY=/scratch/cy94/rs4477/micromamba/envs/mqtl_tensorqtl/bin/python3
+SC=/scratch/cy94/rs4477/cov_v2
+BASE=/scratch/cy94/rs4477/1kgp-cis-mqtl
+MATRIXDIR=$BASE/matrix/chr22_100samples
+
+# CpG-destroying variants = those actually in your samples (the bim)
+awk '{print $1"\t"$4"\t"$5"\t"$6}' $BASE/genotypes/chr22_100samples/chr22.100samples.bim \
+  > $BASE/chr22.mysnps.tsv
+
+$PY $SC/filter_cpg_snps.py \
+  --bed $MATRIXDIR/methylation_Mval.bed.gz \
+  --variants $BASE/chr22.mysnps.tsv \
+  --out $MATRIXDIR/methylation_Mval.cpgfilt.bed.gz \
+  --report $MATRIXDIR/dropped_cpg_snps.tsv
+echo "exit: $?"

@@ -1,0 +1,55 @@
+#!/bin/bash
+#PBS -N mat_sp
+#PBS -P cy94
+#PBS -q normal
+#PBS -l ncpus=4
+#PBS -l mem=128GB
+#PBS -l walltime=06:00:00
+#PBS -l storage=scratch/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/cy94/rs4477/logs/mat_sp.log
+set -uo pipefail
+PY=/scratch/cy94/rs4477/micromamba/envs/mqtl_tensorqtl/bin/python3
+BGZIP=/scratch/cy94/rs4477/micromamba/envs/mqtl_modkit/bin/bgzip
+TABIX=/scratch/cy94/rs4477/micromamba/envs/mqtl_modkit/bin/tabix
+CFG=/scratch/cy94/rs4477/1kgp-cis-mqtl/config
+TRUSTED=/scratch/cy94/rs4477/1kgp-cis-mqtl/matrix/genome_452
+OUT=/scratch/cy94/rs4477/1kgp-cis-mqtl/matrix/genome_452_sp
+mkdir -p "$OUT"
+
+# STEP 1: validation run on chr22 ONLY - prove single-pass == trusted build
+echo "$(date +%T) VALIDATION: building chr22 single-pass, comparing to trusted"
+$PY /scratch/cy94/rs4477/build_matrix_singlepass.py \
+    --sheet "$CFG/sample_sheet_452.tsv" --outdir "$OUT" \
+    --chroms chr22 --min-cov 5 --min-frac 0.90 --mvalue \
+    --validate-against "$TRUSTED"
+# if validation failed, the python exits non-zero and set -e-ish check stops us
+if [ $? -ne 0 ]; then echo "VALIDATION FAILED - stopping"; exit 1; fi
+echo "$(date +%T) validation passed"
+
+# STEP 2: build the remaining chromosomes NOT already in TRUSTED
+REMAINING=""
+for N in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+    if [ ! -s "$TRUSTED/chr${N}.methylation_Mval.bed.gz" ]; then
+        REMAINING="$REMAINING,chr${N}"
+    fi
+done
+REMAINING=${REMAINING#,}
+echo "$(date +%T) remaining chromosomes: $REMAINING"
+
+if [ -n "$REMAINING" ]; then
+    $PY /scratch/cy94/rs4477/build_matrix_singlepass.py \
+        --sheet "$CFG/sample_sheet_452.tsv" --outdir "$OUT" \
+        --chroms "$REMAINING" --min-cov 5 --min-frac 0.90 --mvalue
+    # bgzip+tabix each, move into the trusted dir alongside the 7 already done
+    for c in $(echo $REMAINING | tr ',' ' '); do
+        if [ -s "$OUT/${c}.methylation_Mval.bed" ]; then
+            $BGZIP -f "$OUT/${c}.methylation_Mval.bed"
+            $TABIX -p bed "$OUT/${c}.methylation_Mval.bed.gz"
+            mv "$OUT/${c}.methylation_Mval.bed.gz" "$OUT/${c}.methylation_Mval.bed.gz.tbi" "$TRUSTED/" 2>/dev/null
+            echo "$(date +%T) $c done + moved to trusted dir"
+        fi
+    done
+fi
+echo "ALL DONE $(date +%T)"

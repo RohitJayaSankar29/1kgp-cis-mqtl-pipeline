@@ -1,0 +1,28 @@
+#!/bin/bash
+#PBS -N mqtl_nominal
+#PBS -P cy94
+#PBS -q gpuvolta
+#PBS -l ngpus=1
+#PBS -l ncpus=12
+#PBS -l mem=90GB
+#PBS -l walltime=01:00:00
+#PBS -l storage=scratch/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -r y
+#PBS -o /scratch/cy94/rs4477/logs/mqtl_nominal.log
+set -uo pipefail
+ENV=/scratch/cy94/rs4477/micromamba/envs/mqtl_tensorqtl
+export MPLCONFIGDIR=/scratch/cy94/rs4477/tmp/mpl
+PY=$ENV/bin/python3
+SC=/scratch/cy94/rs4477/cov_v2
+BASE=/scratch/cy94/rs4477/1kgp-cis-mqtl
+OUT=$BASE/downstream/chr22/nominal; mkdir -p "$OUT"
+$PY "$SC/05c_run_nominal_significant.py" \
+  --plink-prefix "$BASE/genotypes/chr22_100samples/chr22.100samples" \
+  --phenotype-bed "$BASE/matrix/chr22_100samples/methylation_Mval.cpgfilt.bed.gz" \
+  --covariates "$BASE/covariates/chr22_100samples/covariates.tsv" \
+  --significant-cpgs "$BASE/tensorqtl/chr22_100s/results/chr22.significant_cpgs.txt" \
+  --out-dir "$OUT" --prefix chr22.sig \
+  --cis-window 1000000 --maf-threshold 0.05 --inverse-normal --threads 12
+echo "exit: $?"; ls -la "$OUT"

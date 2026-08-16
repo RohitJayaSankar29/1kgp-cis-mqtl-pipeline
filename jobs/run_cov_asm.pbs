@@ -1,0 +1,23 @@
+#!/bin/bash
+#PBS -N cov_asm
+#PBS -P cy94
+#PBS -q normal
+#PBS -l ncpus=4
+#PBS -l mem=64GB
+#PBS -l walltime=04:00:00
+#PBS -l storage=scratch/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/cy94/rs4477/logs/cov_asm.log
+set -uo pipefail
+PY=/scratch/cy94/rs4477/micromamba/envs/mqtl_tensorqtl/bin/python3
+CFG=/scratch/cy94/rs4477/1kgp-cis-mqtl/config
+MATDIR=/scratch/cy94/rs4477/1kgp-cis-mqtl/matrix/genome_452_cpgfilt
+OUT=/scratch/cy94/rs4477/1kgp-cis-mqtl/covariates/genome_452
+for N in 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1; do
+  C=chr$N
+  [ -s "$OUT/$C.covariates.tsv" ] && { echo "$C done, skip"; continue; }
+  echo "$(date +%T) building $C"
+  $PY /scratch/cy94/rs4477/cov_v2/build_covariates_452.py --matrix $MATDIR/$C.methylation_Mval.cpgfilt.bed.gz --geno-pca $OUT/geno_pca.eigenvec --metadata $CFG/metadata_452.tsv --n-geno-pc 10 --n-meth-pc 10 --out $OUT/$C.covariates.tsv && echo "$C: $(( $(wc -l < $OUT/$C.covariates.tsv) - 1 )) covariates x $(head -1 $OUT/$C.covariates.tsv | awk "{print NF-1}") samples"
+done
+echo "ALL DONE $(date +%T)"

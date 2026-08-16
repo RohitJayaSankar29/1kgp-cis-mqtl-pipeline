@@ -1,0 +1,14 @@
+#!/bin/bash
+#PBS -N fetch_ped
+#PBS -P cy94
+#PBS -q copyq
+#PBS -l ncpus=1
+#PBS -l mem=4GB
+#PBS -l walltime=00:30:00
+#PBS -l storage=scratch/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/cy94/rs4477/logs/fetch_ped.log
+cd /scratch/cy94/rs4477/1kgp-cis-mqtl/config
+wget "http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/working/1kGP.3202_samples.pedigree_info.txt" -O ped_3202.txt
+echo "EXIT $? : $(wc -l < ped_3202.txt) lines"

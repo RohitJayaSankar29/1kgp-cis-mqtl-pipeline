@@ -1,0 +1,35 @@
+#!/bin/bash
+#PBS -N mat_bigchr
+#PBS -P cy94
+#PBS -q hugemem
+#PBS -l ncpus=6
+#PBS -l mem=192GB
+#PBS -l walltime=08:00:00
+#PBS -l storage=scratch/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/cy94/rs4477/logs/mat_bigchr.log
+set -uo pipefail
+PY=/scratch/cy94/rs4477/micromamba/envs/mqtl_tensorqtl/bin/python3
+BGZIP=/scratch/cy94/rs4477/micromamba/envs/mqtl_modkit/bin/bgzip
+TABIX=/scratch/cy94/rs4477/micromamba/envs/mqtl_modkit/bin/tabix
+CFG=/scratch/cy94/rs4477/1kgp-cis-mqtl/config
+OUT=/scratch/cy94/rs4477/1kgp-cis-mqtl/matrix/genome_452
+
+for CHR in chr2 chr1; do
+    if [ -s "$OUT/${CHR}.methylation_Mval.bed.gz" ]; then
+        echo "$(date +%T) $CHR already done, skip"; continue
+    fi
+    echo "$(date +%T) building $CHR (hugemem)"
+    $PY /scratch/cy94/rs4477/build_matrix_genome.py \
+        --sheet "$CFG/sample_sheet_452.tsv" --outdir "$OUT" \
+        --chroms "$CHR" --min-cov 5 --min-frac 0.90 --mvalue
+    if [ -s "$OUT/${CHR}.methylation_Mval.bed" ]; then
+        $BGZIP -f "$OUT/${CHR}.methylation_Mval.bed"
+        $TABIX -p bed "$OUT/${CHR}.methylation_Mval.bed.gz"
+        echo "$(date +%T) $CHR done"
+    else
+        echo "$(date +%T) $CHR FAILED"
+    fi
+done
+echo "DONE $(date +%T)"

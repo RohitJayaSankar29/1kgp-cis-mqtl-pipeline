@@ -1,0 +1,29 @@
+#!/bin/bash
+#PBS -N mat_gw
+#PBS -P cy94
+#PBS -q normal
+#PBS -l ncpus=4
+#PBS -l mem=64GB
+#PBS -l walltime=06:00:00
+#PBS -l storage=scratch/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/cy94/rs4477/logs/mat_gw_^array_index^.log
+#PBS -J 1-22
+#PBS -r y
+set -uo pipefail
+PY=/scratch/cy94/rs4477/micromamba/envs/mqtl_tensorqtl/bin/python3
+CFG=/scratch/cy94/rs4477/1kgp-cis-mqtl/config
+OUT=/scratch/cy94/rs4477/1kgp-cis-mqtl/matrix/genome_452
+CHR=chr${PBS_ARRAY_INDEX}
+$PY /scratch/cy94/rs4477/build_matrix_genome.py \
+    --sheet $CFG/sample_sheet_452.tsv \
+    --outdir $OUT \
+    --chroms $CHR \
+    --min-cov 5 --min-frac 0.90 --mvalue
+# bgzip + tabix the output
+BGZIP=/scratch/cy94/rs4477/micromamba/envs/mqtl_modkit/bin/bgzip
+TABIX=/scratch/cy94/rs4477/micromamba/envs/mqtl_modkit/bin/tabix
+$BGZIP -f $OUT/${CHR}.methylation_Mval.bed
+$TABIX -p bed $OUT/${CHR}.methylation_Mval.bed.gz
+echo "done $CHR"

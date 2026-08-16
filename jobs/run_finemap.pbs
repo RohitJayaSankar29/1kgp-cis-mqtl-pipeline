@@ -1,0 +1,29 @@
+#!/bin/bash
+#PBS -N mqtl_finemap
+#PBS -P cy94
+#PBS -q gpuvolta
+#PBS -l ngpus=1
+#PBS -l ncpus=12
+#PBS -l mem=90GB
+#PBS -l walltime=02:00:00
+#PBS -l storage=scratch/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -r y
+#PBS -o /scratch/cy94/rs4477/logs/mqtl_finemap.log
+set -uo pipefail
+ENV=/scratch/cy94/rs4477/micromamba/envs/mqtl_tensorqtl
+export MPLCONFIGDIR=/scratch/cy94/rs4477/tmp/mpl
+export R_HOME=$ENV/lib/R
+export LD_LIBRARY_PATH=$ENV/lib/R/lib:$ENV/lib:${LD_LIBRARY_PATH:-}
+PY=$ENV/bin/python3
+SC=/scratch/cy94/rs4477/cov_v2
+BASE=/scratch/cy94/rs4477/1kgp-cis-mqtl
+OUT=$BASE/downstream/chr22; mkdir -p "$OUT"
+$PY "$SC/finemapsusie.py" \
+  --plink-prefix "$BASE/genotypes/chr22_100samples/chr22.100samples" \
+  --phenotype-bed "$BASE/matrix/chr22_100samples/methylation_Mval.cpgfilt.bed.gz" \
+  --covariates "$BASE/covariates/chr22_100samples/covariates.tsv" \
+  --significant-cpgs "$BASE/tensorqtl/chr22_100s/results/chr22.significant_cpgs.txt" \
+  --out "$OUT/chr22.susie.txt.gz" \
+  --cis-window 1000000 --maf-threshold 0.05 --max-l 10 --inverse-normal --threads 12

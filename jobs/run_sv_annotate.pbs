@@ -1,0 +1,27 @@
+#!/bin/bash
+#PBS -N sv_annotate
+#PBS -P cy94
+#PBS -q normal
+#PBS -l ncpus=8
+#PBS -l mem=32GB
+#PBS -l walltime=01:00:00
+#PBS -l storage=scratch/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -r y
+#PBS -o /scratch/cy94/rs4477/logs/sv_annotate.log
+set -uo pipefail
+export MPLCONFIGDIR=/scratch/cy94/rs4477/tmp/mpl
+PY=/scratch/cy94/rs4477/micromamba/envs/mqtl_tensorqtl/bin/python3
+BASE=/scratch/cy94/rs4477/1kgp-cis-mqtl
+OUT=$BASE/downstream/chr22; mkdir -p "$OUT"
+$PY /scratch/cy94/rs4477/cov_v2/sv_annotate.py \
+  --matrix "$BASE/matrix/chr22_100samples/methylation_Mval.cpgfilt.bed.gz" \
+  --covariates "$BASE/covariates/chr22_100samples/covariates.tsv" \
+  --permutation "$BASE/tensorqtl/chr22_100s/permutation/chr22.perm.txt.gz" \
+  --significant-cpgs "$BASE/tensorqtl/chr22_100s/results/chr22.significant_cpgs.txt" \
+  --plink-prefix "$BASE/genotypes/chr22_100samples/chr22.100samples" \
+  --sv-matrix "$BASE/sv/chr22.sv.gt.tsv" \
+  --out "$OUT/chr22.sv_annotation.txt.gz" \
+  --cis-window 1000000 --sv-p 1e-3 --r2 0.8
+echo "exit: $?"; ls -la "$OUT"

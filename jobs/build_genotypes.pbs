@@ -1,0 +1,51 @@
+#!/bin/bash
+#PBS -N build_geno
+#PBS -P cy94
+#PBS -q express
+#PBS -l ncpus=2
+#PBS -l mem=16GB
+#PBS -l walltime=00:30:00
+#PBS -l storage=gdata/xl04+scratch/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -r y
+#PBS -o /scratch/cy94/rs4477/logs/build_geno.log
+set -uo pipefail
+module load bcftools/1.21
+PLINK2=/scratch/cy94/rs4477/micromamba/envs/plink/bin/plink2
+
+VCF=/g/data/xl04/rs4477/1kgp-cis-mqtl/genotypes/chr22/1kGP_high_coverage_Illumina.chr22.filtered.SNV_INDEL_SV_phased_panel.vcf.gz
+MATRIX=/scratch/cy94/rs4477/1kgp-cis-mqtl/matrix/chr22_100samples/methylation_Mval.bed.gz
+OUT=/scratch/cy94/rs4477/1kgp-cis-mqtl/genotypes/chr22_100samples
+CFG=/scratch/cy94/rs4477/1kgp-cis-mqtl/config
+TMP=$PBS_JOBFS
+mkdir -p "$OUT" "$CFG"
+
+zcat "$MATRIX" | head -1 | cut -f5- | tr '\t' '\n' > "$CFG/pheno_samples.txt"
+echo "pheno samples: $(wc -l < "$CFG/pheno_samples.txt")"
+
+awk '{ s=$1; if (s ~ /^GM/) sub(/^GM/,"NA",s); print s }' "$CFG/pheno_samples.txt" > "$CFG/keep_geno.txt"
+awk '$1 ~ /^GM/ { na=$1; sub(/^GM/,"NA",na); print na, $1 }' "$CFG/pheno_samples.txt" > "$CFG/rename_na2gm.txt"
+echo "GM->NA renames: $(wc -l < "$CFG/rename_na2gm.txt")"
+
+bcftools view -S "$CFG/keep_geno.txt" --force-samples -Oz -o "$TMP/sub.vcf.gz" "$VCF"
+echo "subset samples: $(bcftools query -l "$TMP/sub.vcf.gz" | wc -l)"
+bcftools reheader -s "$CFG/rename_na2gm.txt" "$TMP/sub.vcf.gz" -o "$TMP/sub.renamed.vcf.gz"
+
+"$PLINK2" --vcf "$TMP/sub.renamed.vcf.gz" \
+  --make-bed --output-chr chrM \
+  --max-alleles 2 --snps-only just-acgt \
+  --rm-dup force-first \
+  --set-all-var-ids '@:#:$r:$a' --new-id-max-allele-len 100 \
+  --maf 0.05 \
+  --out "$OUT/chr22.100samples"
+
+echo "=== bim chrom (want chr22) ==="; head -1 "$OUT/chr22.100samples.bim" | cut -f1
+echo "=== variants ==="; wc -l < "$OUT/chr22.100samples.bim"
+echo "=== samples ==="; wc -l < "$OUT/chr22.100samples.fam"
+cut -f2 "$OUT/chr22.100samples.fam" | sort > "$TMP/geno_ids.txt"
+sort "$CFG/pheno_samples.txt" > "$TMP/pheno_ids.txt"
+echo "=== in BOTH geno+pheno ==="; comm -12 "$TMP/geno_ids.txt" "$TMP/pheno_ids.txt" | wc -l
+echo "=== pheno with NO genotype (dropped) ==="
+comm -23 "$TMP/pheno_ids.txt" "$TMP/geno_ids.txt" | tr '\n' ' '; echo
+echo "DONE"

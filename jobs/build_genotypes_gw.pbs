@@ -1,0 +1,51 @@
+#!/bin/bash
+#PBS -N geno_gw
+#PBS -P cy94
+#PBS -q normal
+#PBS -l ncpus=4
+#PBS -l mem=32GB
+#PBS -l walltime=12:00:00
+#PBS -l jobfs=100GB
+#PBS -l storage=gdata/xl04+scratch/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/cy94/rs4477/logs/geno_gw.log
+set -uo pipefail
+BCFTOOLS=/scratch/cy94/rs4477/micromamba/envs/mqtl_modkit/bin/bcftools
+PLINK2=/scratch/cy94/rs4477/micromamba/envs/plink/bin/plink2
+CFG=/scratch/cy94/rs4477/1kgp-cis-mqtl/config
+MATDIR=/scratch/cy94/rs4477/1kgp-cis-mqtl/matrix/genome_452
+GENOROOT=/scratch/cy94/rs4477/1kgp-cis-mqtl/genotypes
+OUTROOT=/scratch/cy94/rs4477/1kgp-cis-mqtl/genotypes/genome_452
+TMP=$PBS_JOBFS
+mkdir -p "$OUTROOT" "$CFG"
+
+# derive keep-list + rename map ONCE from the cohort (chr22 matrix header = all 452)
+zcat "$MATDIR/chr22.methylation_Mval.bed.gz" | head -1 | cut -f5- | tr '\t' '\n' > "$CFG/pheno_samples_452.txt"
+echo "pheno samples: $(wc -l < "$CFG/pheno_samples_452.txt")"
+awk '{ s=$1; if (s ~ /^GM/) sub(/^GM/,"NA",s); print s }' "$CFG/pheno_samples_452.txt" > "$CFG/keep_geno_452.txt"
+awk '$1 ~ /^GM/ { na=$1; sub(/^GM/,"NA",na); print na, $1 }' "$CFG/pheno_samples_452.txt" > "$CFG/rename_na2gm_452.txt"
+echo "GM->NA renames: $(wc -l < "$CFG/rename_na2gm_452.txt")"
+
+for N in 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1; do
+    CHR=chr${N}
+    OUT=$OUTROOT/$CHR
+    mkdir -p "$OUT"
+    if [ -s "$OUT/${CHR}.452samples.bim" ]; then
+        echo "$(date +%T) $CHR already done, skip"; continue
+    fi
+    VCF=$GENOROOT/$CHR/1kGP_high_coverage_Illumina.${CHR}.filtered.SNV_INDEL_SV_phased_panel.vcf.gz
+    if [ ! -s "$VCF" ]; then echo "$(date +%T) $CHR panel MISSING ($VCF) - skip"; continue; fi
+    echo "$(date +%T) subsetting $CHR"
+    "$BCFTOOLS" view -S "$CFG/keep_geno_452.txt" --force-samples -Oz -o "$TMP/sub.vcf.gz" "$VCF"
+    "$PLINK2" --vcf "$TMP/sub.vcf.gz" \
+        --make-bed --output-chr chrM \
+        --max-alleles 2 --snps-only just-acgt \
+        --rm-dup force-first \
+        --set-all-var-ids '@:#:$r:$a' --new-id-max-allele-len 100 \
+        --maf 0.05 \
+        --out "$OUT/${CHR}.452samples"
+    echo "$(date +%T) $CHR: $(wc -l < "$OUT/${CHR}.452samples.bim") variants, $(wc -l < "$OUT/${CHR}.452samples.fam") samples"
+    rm -f "$TMP/sub.vcf.gz" "$TMP/sub.vcf.gz"
+done
+echo "ALL GENOTYPES DONE $(date +%T)"

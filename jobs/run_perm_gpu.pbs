@@ -1,0 +1,39 @@
+#!/bin/bash
+#PBS -N mqtl_perm
+#PBS -P cy94
+#PBS -q gpuvolta
+#PBS -l ngpus=1
+#PBS -l ncpus=12
+#PBS -l mem=90GB
+#PBS -l walltime=02:00:00
+#PBS -l storage=scratch/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -r y
+#PBS -o /scratch/cy94/rs4477/logs/mqtl_perm.log
+set -uo pipefail
+PY=/scratch/cy94/rs4477/micromamba/envs/mqtl_tensorqtl/bin/python3
+FIX=/scratch/cy94/rs4477/1kgp_tensorqtl_fix
+BASE=/scratch/cy94/rs4477/1kgp-cis-mqtl
+GENO=$BASE/genotypes/chr22_100samples/chr22.100samples
+PHENO=$BASE/matrix/chr22_100samples/methylation_Mval.cpgfilt.bed.gz
+COV=$BASE/covariates/chr22_100samples/covariates.tsv
+OUT=$BASE/tensorqtl/chr22_100s
+mkdir -p "$OUT/permutation"
+
+echo "=== GPU check ==="
+$PY -c "import torch; print('CUDA:', torch.cuda.is_available(), '|', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
+echo "=== chrom check ==="
+echo "geno:  $(head -1 $GENO.bim | cut -f1)"
+echo "pheno: $(zcat $PHENO | sed -n '2p' | cut -f1)"
+
+echo "=== permutation: 100 samples, nperm=10000 ==="
+$PY $FIX/scripts/tensorqtl/05a_run_permutation.py \
+  --plink-prefix "$GENO" \
+  --phenotype-bed "$PHENO" \
+  --covariates "$COV" \
+  --out "$OUT/permutation/chr22.perm.txt.gz" \
+  --cis-window 1000000 --maf-threshold 0.05 \
+  --n-permutations 1000 --inverse-normal --threads 12
+echo "exit: $?"
+ls -la "$OUT/permutation/"
