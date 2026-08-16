@@ -1,112 +1,41 @@
 # 1KGP cis-mQTL CpG-centric prioritisation pipeline
 
-This repository contains a merged NCI/Gadi-ready pipeline for developing a reproducible CpG-centric cis-mQTL prioritisation framework.
+A reproducible CpG-centric cis-mQTL prioritisation framework built on the public
+1000 Genomes Project Oxford Nanopore (1000G-ONT) resource.
 
+## Status (genome-wide run)
 
+Completed end-to-end on **452 unrelated 1000G-ONT samples** (R9 + R10), genome-wide:
 
-## Core design
+- Cohort: 452 unrelated founders (500 roster minus 48 relatives)
+- Methylation matrices (5mC, M-value): 22/22 chromosomes
+- Genotypes (PLINK, MAF>0.05): 22/22, 452 samples
+- CpG-SNP artefact filter: 22/22 (~2.7% dropped)
+- Covariates: sex + chemistry + basecaller + 10 genoPC + 10 methPC
+- cis-mQTL permutation scan: 22/22, +/-1Mb, 100 perms
 
-The main rule is: never store the cohort BAMs permanently. Each BAM is staged to `$PBS_JOBFS`, processed with Modkit, compressed bedMethyl outputs are moved to `/g/data`, and the BAM is deleted.
+### Headline result
 
-## Recommended workflow
+- CpGs tested genome-wide: 25,912,587
+- Significant cis-mQTLs (FDR<0.05, BH): 1,638,801 (~6.3%)
+- Top hits reach p ~ 6e-241; driving variants adjacent to their CpGs.
 
-```text
-00_test_tensorqtl.py
-        ↓
-00_build_manifest.py / make_manifest_parallel.py
-        ↓
-02_stream_bam_extract_methylation.sh
-        ↓
-01_aggregate_bedmethyl.py
-        ↓
-04_prepare_plink_chr.sh
-        ↓
-02_prepare_covariates.py or 04_build_covariates.py
-        ↓
-05_run_tensorqtl_pilot.py
-        ↓
-06_results_qc.py
-        ↓
-08_run_susie_finemap.R
-        ↓
-09_integrate_sv_mqtl.py
-        ↓
-10_annotate_functional.py
-        ↓
-11_score_prioritise_variants.py
-```
+## Method notes
 
-## Folder layout
+- Methylation from pre-computed Modkit bedMethyl (5mC only).
+- CpG-SNP filter uses in-sample variants (cohort .bim), not the full panel.
+- Genotype PCs genome-wide (merged, LD-pruned, 10 PCs).
+- Permutation pass is CPU-bound; run chunked-parallel (184 chunks) not GPU.
+- Discovery: 100 permutations; 1000-perm confirmation only on prioritised hits.
+- FDR by Benjamini-Hochberg.
 
-```text
-config/                 Gadi/NCI environment paths
-jobs/                   PBS job scripts
-scripts/manifest/       BAM/sample manifest construction
-scripts/methylation/    Modkit methylation extraction
-scripts/matrix/         bedMethyl aggregation and methylation matrices
-scripts/covariates/     genotype/methylation/categorical covariates
-scripts/genotype/       VCF to PLINK preparation
-scripts/tensorqtl/      cis-mQTL mapping
-scripts/qc/             QQ, Manhattan, lambda GC and hit table QC
-scripts/finemapping/    SuSiE fine-mapping
-scripts/sv/             structural variant integration
-scripts/annotation/     functional annotation overlap
-scripts/prioritisation/ CpG-centric scoring
-scripts/tests/          synthetic TensorQTL smoke test
-scripts/prototype/      earlier simplified prototype scripts retained for reference
-scripts/deprecated/     deprecated helper scripts retained for reference
-```
+## Pipeline stages
 
-## First Gadi test
+manifest -> methylation matrix -> genotypes -> CpG-SNP filter -> covariates
+-> cis-mQTL permutation -> FDR -> nominal-on-significant -> SuSiE fine-mapping
+-> SV integration -> functional annotation -> prioritisation -> ASM corroboration
 
-Do not start with the full cohort. Start with one chromosome and a very small number of samples.
+## Safety
 
-```bash
-git clone https://github.com/RohitJayaSankar29/1kgp-cis-mqtl-pipeline.git
-cd 1kgp-cis-mqtl-pipeline/1kgp_cis_mqtl_pipeline
-```
-
-Edit:
-
-```bash
-nano config/gadi.env
-```
-
-Then test TensorQTL first:
-
-```bash
-python scripts/tests/00_test_tensorqtl.py --test-dir /scratch/cy94/$USER/test_tensorqtl
-```
-
-Then run a tiny real pilot:
-
-```text
-1 sample × chr22
-2 samples × chr22
-2 samples × chr21 + chr22
-```
-
-Only scale after each stage produces the expected output files.
-
-## Important outputs
-
-```text
-config/bam_manifest.tsv
-methylation/bedmethyl/*_combined.bedmethyl.gz
-methylation/bedmethyl/*_combined.bedmethyl.gz.tbi
-matrix/methylation_beta.bed.gz
-matrix/methylation_Mval.bed.gz
-covariates/covariates.tsv
-tensorqtl/permutation/*.txt.gz
-tensorqtl/nominal/*.parquet
-qc/*.png / *.pdf / *.tsv
-prioritisation/prioritised_variant_cpg_pairs.tsv
-```
-
-## Safety notes
-
-- Do not commit BAM, VCF, BED, parquet or result files to Git.
-- Keep raw BAMs temporary only.
-- Use `$PBS_JOBFS` for staged BAMs.
-- Use `/g/data` for final compressed bedMethyl and results.
-- Keep logs for every PBS job.
+Big data (BAM/VCF/BED/parquet/full results) is NOT committed; see .gitignore.
+Only scripts, jobs, configs, and small summaries are versioned.
