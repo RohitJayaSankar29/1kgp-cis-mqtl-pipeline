@@ -1,0 +1,26 @@
+#!/bin/bash
+#PBS -N nominal_gw
+#PBS -P cy94
+#PBS -q normal
+#PBS -l ncpus=12
+#PBS -l mem=48GB
+#PBS -l walltime=08:00:00
+#PBS -l storage=scratch/cy94+gdata/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/cy94/rs4477/logs/nominal_gw.log
+export MAMBA_EXE=/home/571/rs4477/.local/bin/micromamba
+export MAMBA_ROOT_PREFIX=/scratch/cy94/rs4477/micromamba
+eval "$($MAMBA_EXE shell hook --shell bash --root-prefix $MAMBA_ROOT_PREFIX)"
+micromamba activate mqtl_tensorqtl
+cd /scratch/cy94/rs4477/1kgp-cis-mqtl-pipeline
+B=/scratch/cy94/rs4477/1kgp-cis-mqtl
+G=/g/data/cy94/rs4477/downstream/genome_452
+for N in $(seq 1 22); do
+  C=chr$N
+  O=$G/$C/nominal; mkdir -p $O
+  [ -s $O/$C.sig.done ] && { echo "$C skip"; continue; }
+  echo "=== $C $(date +%T) ==="
+  python scripts/cov_v2/05c_run_nominal_significant.py --plink-prefix $B/genotypes/genome_452/$C/$C.452samples --phenotype-bed $B/matrix/genome_452_cpgfilt/$C.methylation_Mval.cpgfilt.bed.gz --covariates $B/covariates/genome_452/$C.covariates.tsv --significant-cpgs $B/tensorqtl/genome_452/sig_by_chrom/$C.sig_cpgs.txt --out-dir $O --prefix $C.sig --cis-window 1000000 --maf-threshold 0.05 --inverse-normal --threads 12 && touch $O/$C.sig.done
+done
+echo ALL_DONE

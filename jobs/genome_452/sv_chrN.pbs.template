@@ -1,0 +1,23 @@
+#!/bin/bash
+#PBS -N sv_chr22
+#PBS -P cy94
+#PBS -q normal
+#PBS -l ncpus=4
+#PBS -l mem=32GB
+#PBS -l walltime=05:00:00
+#PBS -l storage=scratch/cy94+gdata/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/cy94/rs4477/logs/sv_chr22.log
+export MAMBA_EXE=/home/571/rs4477/.local/bin/micromamba
+export MAMBA_ROOT_PREFIX=/scratch/cy94/rs4477/micromamba
+eval "$($MAMBA_EXE shell hook --shell bash --root-prefix $MAMBA_ROOT_PREFIX)"
+micromamba activate mqtl_tensorqtl
+cd /scratch/cy94/rs4477/1kgp-cis-mqtl-pipeline
+B=/scratch/cy94/rs4477/1kgp-cis-mqtl
+SC=/scratch/cy94/rs4477/1kgp-cis-mqtl-pipeline/scripts/cov_v2
+G=/g/data/cy94/rs4477/downstream/genome_452
+C=chr22
+O=$G/$C/sv; mkdir -p $O
+python $SC/sv_annotate.py --matrix $B/matrix/genome_452_cpgfilt/$C.methylation_Mval.cpgfilt.bed.gz --covariates $B/covariates/genome_452/$C.covariates.tsv --permutation $B/tensorqtl/genome_452/combined/$C.permutation.txt --significant-cpgs $B/tensorqtl/genome_452/sig_by_chrom/$C.sig_cpgs.txt --plink-prefix $B/genotypes/genome_452/$C/$C.452samples --sv-matrix $B/sv_genome_452/$C.sv.gt.tsv --out $O/$C.sv_annotation.txt.gz --cis-window 1000000 --sv-p 1e-3 --r2 0.8
+echo DONE_$C

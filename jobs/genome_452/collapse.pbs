@@ -1,0 +1,21 @@
+#!/bin/bash
+#PBS -N collapse
+#PBS -P cy94
+#PBS -q normal
+#PBS -l ncpus=12
+#PBS -l mem=64GB
+#PBS -l walltime=01:00:00
+#PBS -l storage=scratch/cy94+gdata/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/cy94/rs4477/logs/collapse.log
+export MAMBA_EXE=/home/571/rs4477/.local/bin/micromamba
+export MAMBA_ROOT_PREFIX=/scratch/cy94/rs4477/micromamba
+eval "$($MAMBA_EXE shell hook --shell bash --root-prefix $MAMBA_ROOT_PREFIX)"
+micromamba activate mqtl_tensorqtl
+G=/g/data/cy94/rs4477/downstream/genome_452
+SC=/scratch/cy94/rs4477/cov_v2
+python $SC/collapse_to_variant_level.py --prioritised $G/genome.prioritised.tsv --out $G/genome.prioritised_variant_level.tsv --score score_weighted
+echo DONE
+wc -l $G/genome.prioritised_variant_level.tsv
+head -3 $G/genome.prioritised_variant_level.tsv

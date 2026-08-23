@@ -5,7 +5,7 @@ For each significant CpG, SuSiE assigns a posterior inclusion probability (PIP)
 to every cis variant and groups likely-causal variants into 95% credible sets.
 Needs susieR + rpy2 in the env (see docs/DOWNSTREAM.md).
 
-NOTE: the structure of tensorqtl.susie.map_susie's return value has changed
+NOTE: the structure of tensorqtl.susie.map's return value has changed
 across releases. The parser below is defensive; if your CpGs come back with empty
 credible sets, print one entry of `res` and adjust the key names here.
 
@@ -90,7 +90,7 @@ def main():
     genotype_df = pr.load_genotypes()
     variant_df = pr.bim.set_index("snp")[["chrom", "pos"]]
 
-    res = susie.map_susie(genotype_df, variant_df, phenotype_df, phenotype_pos_df,
+    res = susie.map(genotype_df, variant_df, phenotype_df, phenotype_pos_df,
                           covariates_df=covariates_df, maf_threshold=a.maf_threshold,
                           window=a.cis_window, L=a.max_l)
 

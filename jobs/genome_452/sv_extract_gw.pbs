@@ -1,0 +1,36 @@
+#!/bin/bash
+#PBS -N sv_extract_gw
+#PBS -P cy94
+#PBS -q normal
+#PBS -l ncpus=4
+#PBS -l mem=16GB
+#PBS -l walltime=05:00:00
+#PBS -l storage=scratch/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/cy94/rs4477/logs/sv_extract_gw.log
+set -uo pipefail
+BCF=/scratch/cy94/rs4477/micromamba/envs/mqtl_modkit/bin/bcftools
+B=/scratch/cy94/rs4477/1kgp-cis-mqtl
+KEEP=$B/config/keep_geno_452.txt
+OUTDIR=$B/sv_genome_452; mkdir -p $OUTDIR
+for N in $(seq 1 22); do
+  C=chr$N
+  PANEL=$B/genotypes/$C/1kGP_high_coverage_Illumina.${C}.filtered.SNV_INDEL_SV_phased_panel.vcf.gz
+  OUT=$OUTDIR/$C
+  [ -s $OUT.sv.gt.tsv ] && { echo "$C done, skip"; continue; }
+  echo "=== $C $(date +%T) ==="
+  $BCF view -r $C -S $KEEP --force-samples $PANEL | $BCF view -i 'ALT[0]~"<" || INFO/SVTYPE!="."' -Oz -o $OUT.sv.vcf.gz
+  $BCF index -t $OUT.sv.vcf.gz
+  Nsv=$($BCF index -n $OUT.sv.vcf.gz 2>/dev/null || echo 0)
+  echo "$C SV records: $Nsv"
+  [ "$Nsv" -eq 0 ] && { echo "$C: 0 SVs"; continue; }
+  {
+    printf "sv_id\tchrom\tpos\tend\tsvtype\tsvlen"
+    for s in $($BCF query -l $OUT.sv.vcf.gz); do printf "\t%s" "$s"; done
+    printf "\n"
+    $BCF query -f '%ID\t%CHROM\t%POS\t%INFO/END\t%INFO/SVTYPE\t%INFO/SVLEN[\t%GT]\n' $OUT.sv.vcf.gz
+  } > $OUT.sv.gt.tsv
+  echo "$C SVs: $(( $(wc -l < $OUT.sv.gt.tsv) - 1 ))"
+done
+echo ALL_SV_DONE

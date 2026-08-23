@@ -1,0 +1,29 @@
+#!/bin/bash
+#PBS -N prioritise_gw
+#PBS -P cy94
+#PBS -q normal
+#PBS -l ncpus=8
+#PBS -l mem=48GB
+#PBS -l walltime=05:00:00
+#PBS -l storage=scratch/cy94+gdata/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/cy94/rs4477/logs/prioritise_gw.log
+set -uo pipefail
+export MAMBA_EXE=/home/571/rs4477/.local/bin/micromamba
+export MAMBA_ROOT_PREFIX=/scratch/cy94/rs4477/micromamba
+eval "$($MAMBA_EXE shell hook --shell bash --root-prefix $MAMBA_ROOT_PREFIX)"
+micromamba activate mqtl_tensorqtl
+B=/scratch/cy94/rs4477/1kgp-cis-mqtl
+A=/scratch/cy94/rs4477/reference/annotation
+G=/g/data/cy94/rs4477/downstream/genome_452
+SC=/scratch/cy94/rs4477/cov_v2
+for N in $(seq 3 22); do
+  C=chr$N
+  OUT=$G/$C/$C.prioritised.txt.gz
+  [ -s "$OUT" ] && { echo "$C skip"; continue; }
+  NOM=$G/$C/nominal/$C.sig.cis_qtl_pairs.$C.parquet
+  echo "=== $C $(date +%T) ==="
+  python $SC/prioritise_framework.py --susie $G/$C/finemap/$C.susie.tsv --bim $B/genotypes/genome_452/$C/$C.452samples.bim --sv $G/$C/sv/$C.sv_annotation.txt.gz --functional $G/$C/functional/$C.functional.tsv --nominal $NOM --tss-bed $A/perchrom/$C.tss.bed --ccre-bed $A/perchrom/$C.ccre.bed --cpg-island-bed $A/perchrom/$C.island.bed --out $OUT && echo "$C done"
+done
+echo CHR3_22_DONE

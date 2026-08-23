@@ -1,0 +1,18 @@
+#!/bin/bash
+#PBS -N sv_agg
+#PBS -P cy94
+#PBS -q normal
+#PBS -l ncpus=12
+#PBS -l mem=64GB
+#PBS -l walltime=02:00:00
+#PBS -l storage=scratch/cy94+gdata/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -o /scratch/cy94/rs4477/logs/sv_agg.log
+export MAMBA_EXE=/home/571/rs4477/.local/bin/micromamba
+export MAMBA_ROOT_PREFIX=/scratch/cy94/rs4477/micromamba
+eval "$($MAMBA_EXE shell hook --shell bash --root-prefix $MAMBA_ROOT_PREFIX)"
+micromamba activate mqtl_tensorqtl
+PY=/scratch/cy94/rs4477/micromamba/envs/mqtl_tensorqtl/bin/python3
+$PY /scratch/cy94/rs4477/sv_aggregate.py
+echo DONE

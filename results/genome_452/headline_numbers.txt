@@ -1,0 +1,29 @@
+GENOME-WIDE cis-mQTL PRIORITISATION FRAMEWORK - 452 1000G-ONT samples
+======================================================================
+Discovery (tensorQTL permutation, 100 perms):
+  CpGs tested:                     25,912,587
+  Significant cis-mQTLs (FDR<0.05): 1,638,801
+  Distinct lead variants:          1,019,744
+
+Fine-mapping (SuSiE, max L=10, all significant CpGs):
+  Variants in credible sets:       4,254,269
+  Credible causal (PIP>0.9):       192,172
+  Credible causal (PIP>0.95):      166,992
+  Credible causal (PIP>0.5):       365,496
+
+SV integration (assoc p<1e-3 AND r2>0.8 with lead SNV):
+  SVs extracted:                   ~102,000
+  SV-implicated (CpG-level):       471,357 (29.1%)
+  SV-implicated (variant-level):   1,843,622 (43.3%)
+  Distinct SVs implicated:         52,972
+
+Functional (ENCODE cCRE, GENCODE TSS, UCSC CpG islands):
+  In cCRE (CpG-level):             500,522 (30.5%)
+  cCRE: dELS 304,532; pELS 75,051; PLS 20,725
+  In CpG island:                   64,280 (3.9%)
+  Median dist to TSS:              18.2 kb
+
+Score: weighted (pip 2.0, neg_log10_p 1.0, abs_effect 0.5, others 1.0)
+  + elastic-net learned score.
+Params: 452 founders | 24 covariates | cis +/-1Mb | MAF 0.05 | FDR BH
+Top hits: near SOST, LHX6, DNM1, BEST2, in enhancers/promoters.
