@@ -49,3 +49,25 @@ ax[1].set_yticks(range(len(top))); ax[1].set_yticklabels(lbl[::-1],fontsize=8)
 ax[1].set_xlabel("score_weighted"); ax[1].set_title("Top 12 prioritised variants")
 plt.tight_layout(); plt.savefig(f"{OUT}/fig4_sv_tophits.png"); plt.close(); print("fig4")
 print("DONE ->",OUT)
+
+# FIG5: tensorQTL — CpGs tested vs significant, per chromosome
+import matplotlib.pyplot as plt
+sig_counts={1:132792,2:126807,3:98061,4:99742,5:92356,6:100709,7:100217,8:85874,
+9:77734,10:86996,11:74869,12:75403,13:51445,14:50795,15:52297,16:61387,17:64290,
+18:41334,19:57887,20:45055,21:25976,22:36775}
+fig,ax=plt.subplots(figsize=(11,4.5))
+chroms=[f"chr{n}" for n in range(1,23)]; counts=[sig_counts[n] for n in range(1,23)]
+b=ax.bar(chroms,counts,color="#2c6fbb")
+ax.set_ylabel("significant cis-mQTL CpGs (FDR<0.05)"); ax.set_xlabel("chromosome")
+ax.set_title("tensorQTL: significant CpGs per chromosome (total 1,638,801)")
+plt.xticks(rotation=45,ha="right",fontsize=9)
+for bb,c in zip(b,counts): ax.text(bb.get_x()+bb.get_width()/2,c,f"{c//1000}k",ha="center",va="bottom",fontsize=7)
+plt.tight_layout(); plt.savefig("/scratch/cy94/rs4477/figures_meeting/fig5_tensorqtl_perchrom.png"); plt.close(); print("fig5")
+
+# FIG6: tensorQTL tested vs significant (the CpG funnel at QTL step)
+fig,ax=plt.subplots(figsize=(6,4.5))
+cats=["CpGs tested","Significant\n(FDR<0.05)"]; vals=[25912587,1638801]
+b=ax.bar(cats,vals,color=["#9aa0a6","#2a9d54"])
+for bb,val in zip(b,vals): ax.text(bb.get_x()+bb.get_width()/2,val,f"{val:,}",ha="center",va="bottom",fontsize=10)
+ax.set_ylabel("CpGs"); ax.set_title("tensorQTL cis-mQTL mapping\n6.3% of tested CpGs significant")
+plt.tight_layout(); plt.savefig("/scratch/cy94/rs4477/figures_meeting/fig6_tensorqtl_funnel.png"); plt.close(); print("fig6")
