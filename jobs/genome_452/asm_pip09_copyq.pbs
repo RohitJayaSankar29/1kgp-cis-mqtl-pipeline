@@ -1,0 +1,45 @@
+#!/bin/bash
+#PBS -N asm_cq
+#PBS -P cy94
+#PBS -q copyq
+#PBS -l ncpus=1
+#PBS -l mem=16GB
+#PBS -l walltime=10:00:00
+#PBS -l jobfs=20GB
+#PBS -l storage=scratch/cy94+gdata/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -r y
+#PBS -J 1-5
+#PBS -o /scratch/cy94/rs4477/logs/
+set -uo pipefail
+MANIFEST=/scratch/cy94/rs4477/1kgp-cis-mqtl-pipeline/config/asm_modkit_manifest.tsv
+BED=/scratch/cy94/rs4477/asm_stream_test/pip09_asm.bed
+TABIX=/scratch/cy94/rs4477/micromamba/envs/mqtl_modkit/bin/tabix
+PY=/scratch/cy94/rs4477/micromamba/envs/mqtl_tensorqtl/bin/python3
+SC=/scratch/cy94/rs4477/cov_v2
+OUT=/g/data/cy94/rs4477/downstream/genome_452/asm_pip09
+mkdir -p $OUT
+# each job handles a BATCH: samples [START..END] of the manifest
+BATCH=45
+START=$(( (PBS_ARRAY_INDEX-1)*BATCH + 1 ))
+END=$(( PBS_ARRAY_INDEX*BATCH ))
+echo "batch $PBS_ARRAY_INDEX: manifest rows $START..$END"
+for i in $(seq $START $END); do
+  LINE=$(awk -v r=$i "NR==r+1" $MANIFEST)
+  [ -z "$LINE" ] && continue
+  S=$(echo "$LINE" | cut -f1)
+  HP1=$(echo "$LINE" | cut -f2)
+  HP2=$(echo "$LINE" | cut -f3)
+  O=$OUT/$S.percpg_asm.tsv
+  [ -s "$O" ] && [ $(wc -l < "$O") -gt 1 ] && { echo "$S done, skip"; continue; }
+  W=$PBS_JOBFS/$S; mkdir -p $W; cd $W
+  curl -sf "$HP1" -o hp1.bed.gz && curl -sf "$HP2" -o hp2.bed.gz || { echo "$S download FAILED"; cd $PBS_JOBFS; rm -rf $W; continue; }
+  $TABIX -p bed hp1.bed.gz && $TABIX -p bed hp2.bed.gz
+  $TABIX -R $BED hp1.bed.gz > hp1.sub.bed
+  $TABIX -R $BED hp2.bed.gz > hp2.sub.bed
+  n1=$(wc -l < hp1.sub.bed); n2=$(wc -l < hp2.sub.bed)
+  $PY $SC/asm_percpg_fast.py hp1.sub.bed hp2.sub.bed $BED $O && echo "$S OK (hp1=$n1 hp2=$n2)"
+  cd $PBS_JOBFS; rm -rf $W
+done
+echo "BATCH $PBS_ARRAY_INDEX COMPLETE"
