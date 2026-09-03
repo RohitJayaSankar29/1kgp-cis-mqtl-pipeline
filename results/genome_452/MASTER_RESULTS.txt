@@ -1,0 +1,53 @@
+GENOME-WIDE cis-mQTL PRIORITISATION + ASM FRAMEWORK — MASTER RESULTS
+=====================================================================
+Cohort: 452 unrelated 1000G-ONT samples (lymphoblastoid cell lines, LCLs)
+Multi-ancestry. Covariates (24): sex + platform + 2 basecaller + 10 genoPC + 10 methPC
+
+=== 1. DISCOVERY ===
+CpGs tested: 25,912,587
+Significant cis-mQTLs (FDR<0.05, BH): 1,638,801
+Distinct lead variants: 1,019,744
+
+=== 2. FINE-MAPPING (SuSiE) ===
+Credible-set variants: 4,254,269
+Credible causal (PIP>0.9): 192,172
+
+=== 3. STRUCTURAL VARIANTS ===
+SV-implicated CpGs: 29.1% (471,357)
+SV-implicated variants: 43.3%
+NOVEL: SV-implicated variants drive LARGER co-methylation domains
+  (mean 9.7 vs 3.9 CpGs, MWU p<1e-300)
+
+=== 4. FUNCTIONAL ===
+In cCRE: 30.5% | CpG island: 3.9% | median dist-to-TSS: 18.2kb
+
+=== 5. ALLELE-SPECIFIC METHYLATION (all 452, per-CpG haplotype) ===
+Full PIP>0.9 set (140k regions) + stratified analysis.
+FINDING (ASM orthogonal to PIP):
+  - Stratified: ASM flat across PIP strata (0.058/0.062/0.051/0.058), matched, distinct regions
+  - Direct: corr(ASM, PIP)=0.011; elastic-net PIP~ASM+annot R2=0
+  - Mechanism: ASM = block-level effect reality; PIP = within-block causal resolution
+POSITIVE CONTROL: recovered canonical imprinted loci (PEG13, PWS-AS chr15q11-13,
+  KCNQ1/IGF2-H19, GNAS, ZNF331) - validates ASM pipeline. Flagged/excluded from cis-mQTL prioritisation.
+NOVEL: domain size correlates with ASM (Spearman rho=0.19)
+
+=== 6. SCORING ===
+Rebalanced score (ASM co-equal with PIP) + convergence score (5 evidence axes).
+2663 variants with all-5 convergence.
+Top SEQUENCE-DRIVEN ASM-corroborated cis-mQTLs: DNM1 (ASM 82%), SLC34A1, HLA-DQA1, TMEM121...
+
+=== 7. COLOCALIZATION (proposed/in-progress - cardiometabolic, Prophecy) ===
+Pipeline validated (SLC34A1 vs eGFR). CKDGen eGFR data acquired.
+5030 ASM-corroborated loci overlap eGFR GWAS regions.
+To extend: T2D (DIAMANTE), CVD (CARDIoGRAM), CKD (CKDGen).
+Methodological note: coloc.abf vs coloc.susie (SLC34A1 correlated r=0.86 but PP3).
+
+=== NOVELTY SUMMARY ===
+1. ASM orthogonal to fine-mapping PIP (3 converging lines) - distinct signal
+2. SVs drive larger co-methylation domains; domains correlate with ASM
+3. ASM-weighted prioritisation recovers imprinting (control) + sequence-driven candidates
+4. Reproducible framework on PUBLIC multi-ancestry 1000G-ONT (vs private single-population)
+5. [proposed] Cardiometabolic colocalization (Prophecy focus)
+
+=== REPRODUCIBILITY ===
+All code + jobs + environment + results on GitHub. Public input data.
