@@ -145,12 +145,15 @@ dependencies:
   - pytz=2026.2=pyhcf101f3_0
   - r-base=4.5.3=h502d0c9_3
   - r-cli=3.6.6=r45h3697838_0
+  - r-coloc=5.2.3=r45hc72bb7e_2
   - r-colorspace=2.1_2=r45h54b55ab_0
   - r-cpp11=0.5.5=r45h785f33e_0
   - r-crayon=1.5.3=r45hc72bb7e_2
+  - r-data.table=1.18.4=r45h1c8cec4_0
   - r-farver=2.1.2=r45h3697838_2
   - r-ggplot2=4.0.3=r45h785f33e_0
   - r-glue=1.8.1=r45h54b55ab_0
+  - r-gridextra=2.3.1=r45hc72bb7e_0
   - r-gtable=0.3.6=r45hc72bb7e_1
   - r-irlba=2.3.7=r45h0e4624f_0
   - r-isoband=0.3.0=r45h3697838_0
@@ -172,6 +175,7 @@ dependencies:
   - r-scales=1.4.0=r45hc72bb7e_1
   - r-susier=0.14.2=r45hc72bb7e_1
   - r-vctrs=0.7.3=r45h3697838_0
+  - r-viridis=0.6.5=r45hc72bb7e_2
   - r-viridislite=0.4.3=r45hc72bb7e_0
   - r-withr=3.0.2=r45hc72bb7e_1
   - re2=2025.11.05=h5301d42_1
@@ -270,6 +274,7 @@ dependencies:
     - pycparser==3.0
     - pydantic==2.13.4
     - pydantic_core==2.46.4
+    - pyliftover==0.4.1
     - pyparsing==3.3.2
     - qtl==0.1.10
     - scikit-learn==1.7.2

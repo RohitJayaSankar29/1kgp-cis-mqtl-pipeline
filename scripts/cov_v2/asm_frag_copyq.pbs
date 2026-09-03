@@ -1,0 +1,45 @@
+#!/bin/bash
+#PBS -N asm_frag
+#PBS -P cy94
+#PBS -q copyq
+#PBS -l ncpus=1
+#PBS -l mem=8GB
+#PBS -l walltime=10:00:00
+#PBS -l jobfs=20GB
+#PBS -l storage=scratch/cy94+gdata/cy94
+#PBS -l wd
+#PBS -j oe
+#PBS -r y
+#PBS -o /scratch/cy94/rs4477/logs/
+set -uo pipefail
+MANIFEST=/scratch/cy94/rs4477/1kgp-cis-mqtl-pipeline/config/asm_manifest_452.tsv
+BED=/scratch/cy94/rs4477/asm_stream_test/frag_subset.bed
+SAM=/scratch/cy94/rs4477/micromamba/envs/mqtl_modkit/bin/samtools
+MODKIT=/scratch/cy94/rs4477/micromamba/envs/mqtl_modkit/bin/modkit
+PY=/scratch/cy94/rs4477/micromamba/envs/mqtl_tensorqtl/bin/python3
+SC=/scratch/cy94/rs4477/cov_v2
+REF=/scratch/cy94/rs4477/reference/hg38.fa
+OUT=/g/data/cy94/rs4477/downstream/genome_452/asm_frag
+mkdir -p $OUT
+BATCH=${BATCH:-50}
+START=$(( (PBS_ARRAY_INDEX-1)*BATCH + 1 ))
+END=$(( PBS_ARRAY_INDEX*BATCH ))
+for i in $(seq $START $END); do
+  LINE=$(awk -v r=$i "NR==r+1" $MANIFEST)
+  [ -z "$LINE" ] && continue
+  S=$(echo "$LINE" | cut -f1)
+  BAM=$(echo "$LINE" | cut -f2)
+  O=$OUT/$S.frag_asm.tsv
+  [ -s "$O" ] && [ $(wc -l < "$O") -gt 1 ] && { echo "$S done"; continue; }
+  W=$PBS_JOBFS/$S; mkdir -p $W; cd $W
+  $SAM view -b -M -L $BED "$BAM" > r.bam 2>/dev/null
+  $SAM quickcheck r.bam 2>/dev/null || { echo "$S stream FAIL"; cd $PBS_JOBFS; rm -rf $W; continue; }
+  $SAM index r.bam
+  echo -e "#readname\thaplotype\tphaseset\tchromosome" > ht.tsv
+  $SAM view r.bam | awk 'BEGIN{OFS="\t"}{hp="none";ps="none";for(j=12;j<=NF;j++){if($j~/^HP:i:/){split($j,a,":");hp="H"a[3]}if($j~/^PS:i:/){split($j,b,":");ps=b[3]}}print $1,hp,ps,$3}' >> ht.tsv
+  $MODKIT extract calls --reference $REF -t 1 r.bam calls.raw.tsv 2>/dev/null
+  $PY $SC/asm_join_calls_gw.py calls.raw.tsv ht.tsv $BED calls.tsv 2>/dev/null
+  $PY $SC/asm_readlevel_v2_gw.py --calls calls.tsv --regions $BED --out $O --stat mwu 2>/dev/null && echo "$S OK"
+  cd $PBS_JOBFS; rm -rf $W
+done
+echo "BATCH $PBS_ARRAY_INDEX DONE"

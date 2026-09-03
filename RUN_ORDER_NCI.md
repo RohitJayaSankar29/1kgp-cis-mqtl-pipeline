@@ -102,3 +102,14 @@ python scripts/sv/09_integrate_sv_mqtl.py --help
 python scripts/annotation/10_annotate_functional.py --help
 python scripts/prioritisation/11_score_prioritise_variants.py --help
 ```
+
+## Stage 10: ASM (all 452) - downloads via copyq (compute nodes lack internet)
+10a. Download modkit hp1/hp2 pileups from 1000G-ONT S3 (config/asm_modkit_manifest.tsv)
+10b. asm_percpg_fast.py: tabix-subset, per-region MWU + Fisher
+10c. agg_pip09.py: aggregate 452 samples
+10d. rescore_with_asm.py: ASM co-equal + convergence score
+10e. flag_imprinted.py: imprinting control vs sequence-driven
+## Stage 11: Analyses
+11a. asm_by_stratum.py: ASM orthogonal to PIP (finding)
+11b. comethyl_figure.py: SVs drive larger co-methylation domains (finding)
+11c. scripts/coloc/: cardiometabolic coloc (hg38->hg19 liftover, coloc.abf)
